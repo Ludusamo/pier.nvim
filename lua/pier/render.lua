@@ -2,8 +2,8 @@ local M = {}
 
 local function content_text(event)
   local msg = event.assistantMessageEvent or event.message or event
-  if msg.type == "text_delta" then
-    return msg.delta or msg.text_delta
+  if msg.type and msg.type ~= "text_delta" then
+    return nil
   end
   return msg.text_delta or msg.delta or event.text_delta or event.content_delta
 end
@@ -13,6 +13,13 @@ local function tool_name(event)
   return event.tool_name or event.name or tool.name or tool.tool_name
 end
 
+local function nested_type(event)
+  local msg = event.assistantMessageEvent or event.message
+  if type(msg) == "table" then
+    return msg.type
+  end
+end
+
 function M.new_state()
   return { started = false }
 end
@@ -20,6 +27,7 @@ end
 function M.event(event, state)
   state = state or M.new_state()
   local typ = event.type or event.event or event.kind
+  local inner_type = nested_type(event)
 
   if typ == "agent_start" or typ == "agent_started" then
     state.started = true
@@ -48,15 +56,19 @@ function M.event(event, state)
     if ok == nil then
       ok = event.success
     end
+    if ok == nil and event.isError ~= nil then
+      ok = not event.isError
+    end
     local status = ok == false and "failed" or "done"
     return string.format("[tool] %s %s\n", name, status)
   end
 
-  if typ == "error" then
-    return "\n[error] " .. tostring(event.message or event.error or "unknown") .. "\n"
+  if typ == "error" or inner_type == "error" then
+    local msg = event.assistantMessageEvent or event.message or event
+    return "\n[error] " .. tostring(msg.message or msg.error or event.error or "unknown") .. "\n"
   end
 
-  if typ == "aborted" or typ == "abort" then
+  if typ == "aborted" or typ == "abort" or inner_type == "aborted" or inner_type == "abort" then
     return "\n--- pier run aborted ---\n"
   end
 

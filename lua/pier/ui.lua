@@ -58,17 +58,40 @@ function M.append(session, text)
   end
 end
 
-function M.open(session)
+function M.open(session, opts)
+  opts = opts or {}
+  local focus = opts.focus ~= false
   local buf = M.buffer(session)
+  local current_win = vim.api.nvim_get_current_win()
   local win = vim.fn.bufwinid(buf)
   if win ~= -1 then
-    vim.api.nvim_set_current_win(win)
+    if focus then
+      vim.api.nvim_set_current_win(win)
+    end
     return buf
   end
   vim.cmd(config.options.window.split .. " " .. tostring(config.options.window.height) .. "split")
   vim.api.nvim_win_set_buf(0, buf)
   vim.api.nvim_win_set_cursor(0, { vim.api.nvim_buf_line_count(buf), 0 })
+  if not focus and vim.api.nvim_win_is_valid(current_win) then
+    vim.api.nvim_set_current_win(current_win)
+  end
   return buf
+end
+
+function M.toggle(session)
+  local buf = M.buffer(session)
+  local closed = false
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.api.nvim_win_get_buf(win) == buf then
+      vim.api.nvim_win_close(win, false)
+      closed = true
+    end
+  end
+  if closed then
+    return buf
+  end
+  return M.open(session)
 end
 
 return M

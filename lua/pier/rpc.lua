@@ -111,14 +111,18 @@ end
 
 function Rpc:on_exit(code, signal)
   local msg = string.format("pi rpc exited with code %s signal %s", tostring(code), tostring(signal))
+  self.log:stderr_text("\n" .. msg .. "\n")
+  if self.stopping then
+    self.log:close()
+    return
+  end
   vim.schedule(function()
     if self.handlers.on_exit then
       self.handlers.on_exit(code, signal)
     end
     vim.notify("pier.nvim: " .. msg, vim.log.levels.WARN)
+    self.log:close()
   end)
-  self.log:stderr_text("\n" .. msg .. "\n")
-  self.log:close()
 end
 
 function Rpc:dispatch(record)
@@ -150,7 +154,11 @@ function Rpc:send(record, cb)
     self.pending[record.id] = cb
   end
   local line = vim.json.encode(record) .. "\n"
-  vim.fn.chansend(self.job, line)
+  local ok, err = pcall(vim.fn.chansend, self.job, line)
+  if not ok then
+    self.pending[record.id] = nil
+    return nil, tostring(err)
+  end
   return record.id
 end
 
@@ -174,6 +182,7 @@ function Rpc:stop()
   if not self.job or self.job <= 0 then
     return
   end
+  self.stopping = true
   local job = self.job
   self.job = nil
   pcall(vim.fn.chanclose, job, "stdin")

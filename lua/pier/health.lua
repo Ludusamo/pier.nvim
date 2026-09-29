@@ -1,3 +1,5 @@
+local config = require("pier.config")
+
 local M = {}
 
 local function ok(msg)
@@ -15,10 +17,12 @@ end
 function M.check()
   vim.health.start("pier.nvim")
 
-  if vim.fn.executable("pi") == 1 then
-    ok("pi is on PATH")
+  local cmd = config.options.cmd or "pi"
+  local pi_available = vim.fn.executable(cmd) == 1
+  if pi_available then
+    ok(cmd .. " is on PATH")
   else
-    error_("pi is not on PATH")
+    error_(cmd .. " is not on PATH")
   end
 
   if vim.fn.executable("git") == 1 then
@@ -27,17 +31,21 @@ function M.check()
     warn("git is not on PATH, root detection falls back to cwd")
   end
 
-  local help = vim.system({ "pi", "--help" }, { text = true }):wait()
-  local text = (help.stdout or "") .. (help.stderr or "")
-  if text:find("%-%-mode") then
-    ok("pi advertises --mode")
-  else
-    warn("could not confirm pi --mode support from help output")
-  end
-  if text:find("%-%-session%-id") then
-    ok("pi advertises --session-id")
-  else
-    warn("could not confirm pi --session-id support from help output")
+  if pi_available then
+    local ok_system, help = pcall(function()
+      return vim.system({ cmd, "--help" }, { text = true }):wait()
+    end)
+    local text = ok_system and ((help.stdout or "") .. (help.stderr or "")) or ""
+    if text:find("%-%-mode") then
+      ok(cmd .. " advertises --mode")
+    else
+      warn("could not confirm " .. cmd .. " --mode support from help output")
+    end
+    if text:find("%-%-session%-id") then
+      ok(cmd .. " advertises --session-id")
+    else
+      warn("could not confirm " .. cmd .. " --session-id support from help output")
+    end
   end
 
   if vim.fn.executable("tmux") == 1 then

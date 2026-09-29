@@ -15,9 +15,13 @@ function Session:start_rpc()
       self:on_event(event)
     end,
     on_exit = function()
+      local text = "\n[error] pi process exited. The next prompt will restart it.\n"
+      if self.rpc and self.rpc.log then
+        self.rpc.log:rendered_text(text)
+      end
       self.rpc = nil
       self.busy = false
-      ui.append(self, "\n[error] pi process exited. The next prompt will restart it.\n")
+      ui.append(self, text)
     end,
   })
 end
@@ -54,8 +58,9 @@ function Session:ask(prompt)
   self:ensure_rpc()
   self.busy = true
   self.render_state = render.new_state()
-  local header = "\n## Pier prompt\n\n" .. prompt:gsub("\n.*", "") .. "\n\n"
-  ui.open(self)
+  local shown_prompt = prompt:match("User question:\n(.*)") or prompt:gsub("\n.*", "")
+  local header = "\n## Pier prompt\n\n" .. shown_prompt .. "\n\n"
+  ui.open(self, { focus = false })
   ui.append(self, header)
   self.rpc.log:rendered_text(header)
   local _, err = self.rpc:prompt(prompt, function(response)
@@ -79,13 +84,15 @@ function Session:abort()
     vim.notify("pier.nvim: no active pi process", vim.log.levels.INFO)
     return
   end
-  self.rpc:abort(function()
-    self.busy = false
+  self.rpc:abort(function(response)
+    if response and (response.error or response.success == false or response.ok == false) then
+      self.busy = false
+    end
   end)
 end
 
 function Session:open_log()
-  ui.open(self)
+  ui.toggle(self)
 end
 
 function Session:open_raw_log()
@@ -120,6 +127,14 @@ end
 
 function M.current()
   local path = vim.api.nvim_buf_get_name(0)
+  local session_id = path:match("^pier://(.+)$")
+  if session_id then
+    for _, session in pairs(sessions) do
+      if session.id == session_id then
+        return session
+      end
+    end
+  end
   if path == "" then
     path = vim.fn.getcwd()
   end

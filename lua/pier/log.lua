@@ -25,8 +25,15 @@ local function write(handle, text)
   if not handle or not text or text == "" then
     return
   end
-  handle:write(text)
-  handle:flush()
+  local ok, err = pcall(function()
+    handle:write(text)
+    handle:flush()
+  end)
+  if not ok then
+    vim.schedule(function()
+      vim.notify("pier.nvim: failed to write log: " .. tostring(err), vim.log.levels.WARN)
+    end)
+  end
 end
 
 function Log:raw_line(line)

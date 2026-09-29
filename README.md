@@ -38,7 +38,7 @@ require("pier").setup({
 | -------------- | ------------------------------------------------------------------ |
 | `:Pier {msg}`  | Ask Pi about the current file and cursor.                          |
 | `:'<,'>Pier`   | Ask Pi about a visual line range with the selected text inlined.    |
-| `:PierLog`     | Open the rendered scratch buffer.                                  |
+| `:PierLog`     | Toggle the rendered scratch buffer.                                |
 | `:PierRawLog`  | Open `raw.jsonl` for the current repository session.                |
 | `:PierTmuxLog` | Open a tmux split tailing `rendered.log`.                           |
 | `:PierAbort`   | Abort the active run for the current repository.                    |
