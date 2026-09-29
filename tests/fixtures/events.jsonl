@@ -1,0 +1,5 @@
+{"type":"agent_start"}
+{"type":"message_update","assistantMessageEvent":{"type":"text_delta","delta":"Hello"}}
+{"type":"tool_execution_start","toolName":"read"}
+{"type":"tool_execution_end","toolName":"read","result":{"ok":true}}
+{"type":"agent_settled"}
