@@ -2,6 +2,7 @@ local project = require("pier.project")
 local rpc_mod = require("pier.rpc")
 local render = require("pier.render")
 local ui = require("pier.ui")
+local locations = require("pier.locations")
 
 local M = {}
 local sessions = {}
@@ -32,13 +33,31 @@ function Session:ensure_rpc()
   end
 end
 
+function Session:add_locations(new_locations)
+  self.locations = self.locations or {}
+  self.location_keys = self.location_keys or {}
+  for _, loc in ipairs(new_locations or {}) do
+    local key = table.concat({ loc.filename or "", loc.lnum or "", loc.col or "" }, "\0")
+    if not self.location_keys[key] then
+      self.location_keys[key] = true
+      table.insert(self.locations, loc)
+    end
+  end
+end
+
 function Session:on_event(event)
   if (event.type or event.event) == "extension_ui_request" and self.rpc then
     self.rpc:cancel_ui(event)
   end
 
-  if (event.type or event.event) == "agent_settled" then
+  local typ = event.type or event.event
+  if typ == "agent_settled" then
     self.busy = false
+    self:add_locations(locations.from_text(self.location_text or "", self.root))
+  end
+
+  if typ ~= "message_update" then
+    self:add_locations(locations.from_event(event, self.root))
   end
 
   local text = render.event(event, self.render_state)
@@ -47,7 +66,24 @@ function Session:on_event(event)
     if self.rpc and self.rpc.log then
       self.rpc.log:rendered_text(text)
     end
+    self.location_text = (self.location_text or "") .. text
   end
+end
+
+function Session:add_context(block)
+  if not block or block == "" then
+    return
+  end
+  self.pending_context = self.pending_context or {}
+  table.insert(self.pending_context, block)
+end
+
+function Session:pending_context_blocks()
+  return vim.deepcopy(self.pending_context or {})
+end
+
+function Session:clear_pending_context()
+  self.pending_context = {}
 end
 
 function Session:ask(prompt)
@@ -58,6 +94,9 @@ function Session:ask(prompt)
   self:ensure_rpc()
   self.busy = true
   self.render_state = render.new_state()
+  self.locations = {}
+  self.location_keys = {}
+  self.location_text = ""
   local shown_prompt = prompt:match("User question:\n(.*)") or prompt:gsub("\n.*", "")
   local header = "\n## Pier prompt\n\n" .. shown_prompt .. "\n\n"
   ui.open(self, { focus = false })
@@ -101,6 +140,17 @@ function Session:open_raw_log()
   vim.cmd("checktime")
 end
 
+function Session:open_locations()
+  local items = locations.to_qf(self.locations or {})
+  if #items == 0 then
+    vim.notify("pier.nvim: no locations captured for this session", vim.log.levels.INFO)
+    return false
+  end
+  vim.fn.setqflist({}, " ", { title = "Pier locations", items = items })
+  vim.cmd("copen")
+  return true
+end
+
 function Session:stop()
   if self.rpc then
     self.rpc:stop()
@@ -120,6 +170,9 @@ function M.for_path(path)
     info = info,
     busy = false,
     render_state = render.new_state(),
+    pending_context = {},
+    locations = {},
+    location_keys = {},
   }, Session)
   sessions[info.root] = session
   return session

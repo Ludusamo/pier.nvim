@@ -126,6 +126,16 @@ Post-MVP:
 | `:PierTui`       | Open the full pi TUI.                      |
 | `:PierLocations` | Show agent-provided locations in quickfix. |
 
+Post-MVP implementation status:
+
+| Command          | Status      |
+| ---------------- | ----------- |
+| `:PierHunk`      | Implemented |
+| `:PierDiag`      | Implemented |
+| `:PierAdd`       | Implemented |
+| `:PierTui`       | Skipped     |
+| `:PierLocations` | Implemented |
+
 ## Context rules
 
 - Normal `:Pier` sends the repo, file, cursor line and a small nearby snippet or reference.

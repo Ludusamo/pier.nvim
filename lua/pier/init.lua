@@ -22,22 +22,82 @@ function M.setup(opts)
   })
 end
 
-function M.ask(args, opts)
+local function build_extra(session, extra)
+  local blocks = session:pending_context_blocks()
+  for _, block in ipairs(extra or {}) do
+    table.insert(blocks, block)
+  end
+  return blocks
+end
+
+local function ask_with_extra(args, extra, opts)
   opts = opts or {}
   local user_prompt = get_prompt(args)
   if not user_prompt or user_prompt == "" then
-    return
+    return false
   end
   local session = session_mod.current()
   local prompt = context.build(user_prompt, {
     root = session.root,
     range = opts.range,
+    extra_context = build_extra(session, extra),
   })
-  session:ask(prompt)
+  local ok = session:ask(prompt)
+  if ok then
+    session:clear_pending_context()
+  end
+  return ok
+end
+
+function M.ask(args, opts)
+  return ask_with_extra(args, nil, opts)
 end
 
 function M.ask_visual(args, line1, line2)
-  M.ask(args, { range = { start_line = line1, end_line = line2 } })
+  return M.ask(args, { range = { start_line = line1, end_line = line2 } })
+end
+
+function M.ask_hunk(args)
+  local session = session_mod.current()
+  local block, err = context.hunk_block(session.root, vim.api.nvim_get_current_buf(), vim.api.nvim_win_get_cursor(0)[1])
+  if not block then
+    vim.notify("pier.nvim: " .. tostring(err), vim.log.levels.WARN)
+    return false
+  end
+  return ask_with_extra(args, { block })
+end
+
+function M.ask_diagnostics(args, opts)
+  opts = opts or {}
+  local session = session_mod.current()
+  local buf = vim.api.nvim_get_current_buf()
+  local start_line = opts.range and opts.range.start_line or 1
+  local end_line = opts.range and opts.range.end_line or vim.api.nvim_buf_line_count(buf)
+  local block, err = context.diagnostics_block(session.root, buf, start_line, end_line)
+  if not block then
+    vim.notify("pier.nvim: " .. tostring(err), vim.log.levels.WARN)
+    return false
+  end
+  return ask_with_extra(args, { block }, { range = opts.range })
+end
+
+function M.add(args, opts)
+  opts = opts or {}
+  local session = session_mod.current()
+  local block
+  if opts.range then
+    block = context.range_block(vim.api.nvim_get_current_buf(), session.root, opts.range.start_line, opts.range.end_line, "User-added selection")
+    if args and args ~= "" then
+      block = block .. "\n\n" .. context.note_block(args)
+    end
+  elseif args and args ~= "" then
+    block = context.note_block(args)
+  else
+    block = context.nearby_block(vim.api.nvim_get_current_buf(), session.root)
+  end
+  session:add_context(block)
+  vim.notify("pier.nvim: added context to next prompt", vim.log.levels.INFO)
+  return true
 end
 
 function M.abort()
@@ -58,12 +118,32 @@ function M.open_tmux_log()
   tmux.open(session.info.rendered_log)
 end
 
+function M.open_locations()
+  session_mod.current():open_locations()
+end
+
 function M._command_pier(opts)
   if opts.range and opts.range > 0 then
     M.ask_visual(opts.args, opts.line1, opts.line2)
   else
     M.ask(opts.args)
   end
+end
+
+function M._command_diag(opts)
+  local range = nil
+  if opts.range and opts.range > 0 then
+    range = { start_line = opts.line1, end_line = opts.line2 }
+  end
+  M.ask_diagnostics(opts.args, { range = range })
+end
+
+function M._command_add(opts)
+  local range = nil
+  if opts.range and opts.range > 0 then
+    range = { start_line = opts.line1, end_line = opts.line2 }
+  end
+  M.add(opts.args, { range = range })
 end
 
 return M
