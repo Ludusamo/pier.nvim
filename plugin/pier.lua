@@ -23,6 +23,30 @@ vim.api.nvim_create_user_command("PierSnippetReject", function()
   pier().reject_snippet()
 end, { desc = "Reject the pending pier snippet preview" })
 
+vim.api.nvim_create_user_command("PierChange", function(opts)
+  pier().ask_change(opts.args)
+end, { nargs = "*", desc = "Ask Pi for a patch and review it hunk by hunk" })
+
+vim.api.nvim_create_user_command("PierPatchAccept", function()
+  pier().accept_patch_hunk()
+end, { desc = "Apply or mark reviewed the current pending pier patch hunk" })
+
+vim.api.nvim_create_user_command("PierPatchReject", function()
+  pier().reject_patch_hunk()
+end, { desc = "Reject or skip the current pending pier patch hunk" })
+
+vim.api.nvim_create_user_command("PierPatchClose", function()
+  pier().close_patch_review()
+end, { desc = "Close the pending pier patch review" })
+
+vim.api.nvim_create_user_command("PierPatchAsk", function(opts)
+  pier().ask_patch_hunk(opts.args)
+end, { nargs = "*", desc = "Ask Pi about the current pending patch hunk" })
+
+vim.api.nvim_create_user_command("PierReviewBranch", function(opts)
+  pier().review_branch(opts.args)
+end, { nargs = "?", desc = "Review the current branch diff hunk by hunk" })
+
 vim.api.nvim_create_user_command("PierHunk", function(opts)
   pier().ask_hunk(opts.args)
 end, { nargs = "*", desc = "Ask pi about the current git hunk" })

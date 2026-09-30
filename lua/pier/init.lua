@@ -2,6 +2,7 @@ local config = require("pier.config")
 local session_mod = require("pier.session")
 local context = require("pier.context")
 local snippet = require("pier.snippet")
+local patch_review = require("pier.patch_review")
 local tmux = require("pier.tmux")
 
 local M = {}
@@ -37,7 +38,7 @@ local function ask_with_extra(args, extra, opts)
   if not user_prompt or user_prompt == "" then
     return false
   end
-  local session = session_mod.current()
+  local session = opts.session or session_mod.current()
   local prompt = context.build(user_prompt, {
     root = session.root,
     range = opts.range,
@@ -96,6 +97,89 @@ end
 
 function M.reject_snippet()
   return snippet.reject()
+end
+
+function M.ask_change(args)
+  local session = session_mod.current()
+  local user_prompt = get_prompt(args)
+  if not user_prompt or user_prompt == "" then
+    return false
+  end
+  local prompt = table.concat({
+    user_prompt,
+    "",
+    "Make the requested change as a unified diff only.",
+    "Do not apply edits directly.",
+    "Return one diff that can be applied with git apply.",
+    "Use normal file headers and hunk headers so each hunk can be reviewed independently.",
+    "Do not include commentary outside the diff unless the change cannot be represented as a patch.",
+  }, "\n")
+  return ask_with_extra(nil, nil, {
+    prompt = prompt,
+    on_settled = function(text)
+      patch_review.start(session.root, text)
+    end,
+  })
+end
+
+function M.accept_patch_hunk()
+  return patch_review.accept()
+end
+
+function M.reject_patch_hunk()
+  return patch_review.reject()
+end
+
+function M.close_patch_review()
+  return patch_review.close()
+end
+
+local function git_output(command)
+  local result = vim.system(command, { text = true }):wait()
+  if result.code ~= 0 then
+    return nil, vim.trim(result.stderr or result.stdout or "git command failed")
+  end
+  return result.stdout or ""
+end
+
+local function default_review_base(root)
+  local branches = { "main", "origin/main", "master", "origin/master" }
+  for _, branch in ipairs(branches) do
+    local ok = git_output({ "git", "-C", root, "rev-parse", "--verify", branch })
+    if ok then
+      return branch
+    end
+  end
+  return "main"
+end
+
+function M.review_branch(args)
+  local session = session_mod.current()
+  local base = args and args ~= "" and args or default_review_base(session.root)
+  local diff, err = git_output({ "git", "-C", session.root, "diff", "--no-ext-diff", "--no-color", "--unified=3", base .. "...HEAD" })
+  if not diff then
+    vim.notify("pier.nvim: " .. tostring(err), vim.log.levels.ERROR)
+    return false
+  end
+  if diff == "" then
+    vim.notify("pier.nvim: no diff found against " .. base, vim.log.levels.INFO)
+    return false
+  end
+  return patch_review.start(session.root, diff, {
+    mode = "review",
+    title = "Reviewing current branch against " .. base,
+  })
+end
+
+function M.ask_patch_hunk(args)
+  local block = patch_review.current_block()
+  if not block then
+    vim.notify("pier.nvim: no pending patch hunk", vim.log.levels.INFO)
+    return false
+  end
+  local root = patch_review.current_root()
+  local session = root and session_mod.for_path(root) or nil
+  return ask_with_extra(args, { block }, { session = session })
 end
 
 function M.ask_diagnostics(args, opts)

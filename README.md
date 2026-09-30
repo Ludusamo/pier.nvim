@@ -5,8 +5,8 @@ It keeps one persisted, read-only Pi RPC process per git root, streams answers i
 
 ## Status
 
-MVP implementation with hunk, diagnostics, add-context, and quickfix location helpers.
-It does not apply edits.
+MVP implementation with hunk, diagnostics, add-context, patch-review, and quickfix location helpers.
+It only applies patch hunks after you explicitly accept them.
 
 ## Setup
 
@@ -41,6 +41,12 @@ require("pier").setup({
 | `:PierSnippet {msg}` | Ask Pi for a code snippet and preview it inline.                 |
 | `:PierSnippetAccept` | Insert the pending snippet preview.                             |
 | `:PierSnippetReject` | Clear the pending snippet preview.                              |
+| `:PierChange {msg}`  | Ask Pi for a unified diff, then review each hunk before apply.   |
+| `:PierPatchAccept`   | Apply the current pending patch hunk.                            |
+| `:PierPatchReject`   | Skip the current pending patch hunk.                             |
+| `:PierPatchAsk {q}`  | Ask Pi a question about the current pending patch hunk.          |
+| `:PierPatchClose`    | Close the pending patch review.                                  |
+| `:PierReviewBranch`  | Review the current branch diff against `main` hunk by hunk.      |
 | `:PierDiag {msg}`    | Ask Pi about diagnostics in the buffer or visual range.          |
 | `:PierAdd`           | Add the current snippet, note, or visual selection to next ask.  |
 | `:PierLocations`     | Open captured file references from Pi output in quickfix.        |
@@ -74,7 +80,9 @@ The spawned command is:
 pi --mode rpc --session-id <id> --tools read,grep,find,ls
 ```
 
-No write, edit, or bash tools are enabled by pier.nvim.
+No write, edit, or bash tools are enabled for Pi by pier.nvim.
+`:PierChange` asks Pi to produce a unified diff, then pier.nvim applies only the hunks you accept with `git apply`.
+`:PierReviewBranch [base]` reviews an existing branch diff without applying anything; accepting marks a hunk reviewed and moves to the next hunk.
 
 ## Health
 
