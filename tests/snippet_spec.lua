@@ -1,0 +1,38 @@
+describe("pier.snippet", function()
+  local snippet = require("pier.snippet")
+
+  it("extracts fenced code", function()
+    local text = "Here you go:\n```lua\nlocal x = 1\nreturn x\n```"
+    assert.are.equal("local x = 1\nreturn x", snippet.extract(text))
+  end)
+
+  it("requires a fenced block", function()
+    assert.are.equal(nil, snippet.extract("\nlocal x = 1\n"))
+  end)
+
+  it("accepts a preview into the buffer", function()
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "before", "after" })
+    assert.truthy(snippet.preview(buf, 1, "```lua\ninserted\n```"))
+    assert.truthy(snippet.has_pending(buf))
+    assert.truthy(snippet.accept(buf))
+    assert.are.same({ "before", "inserted", "after" }, vim.api.nvim_buf_get_lines(buf, 0, -1, false))
+  end)
+
+  it("accepts at the moved preview mark", function()
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "before", "after" })
+    assert.truthy(snippet.preview(buf, 1, "```lua\ninserted\n```"))
+    vim.api.nvim_buf_set_lines(buf, 0, 0, false, { "new top" })
+    assert.truthy(snippet.accept(buf))
+    assert.are.same({ "new top", "before", "inserted", "after" }, vim.api.nvim_buf_get_lines(buf, 0, -1, false))
+  end)
+
+  it("rejects a preview", function()
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "before" })
+    assert.truthy(snippet.preview(buf, 1, "```lua\ninserted\n```"))
+    assert.truthy(snippet.reject(buf))
+    assert.are.same({ "before" }, vim.api.nvim_buf_get_lines(buf, 0, -1, false))
+  end)
+end)

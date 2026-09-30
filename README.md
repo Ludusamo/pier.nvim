@@ -33,18 +33,21 @@ require("pier").setup({
 
 ## Commands
 
-| Command             | Behavior                                                         |
-| ------------------- | ---------------------------------------------------------------- |
-| `:Pier {msg}`       | Ask Pi about the current file and cursor.                        |
-| `:'<,'>Pier`        | Ask Pi about a visual line range with the selected text inlined.  |
-| `:PierHunk {msg}`   | Ask Pi about the git hunk under the cursor.                      |
-| `:PierDiag {msg}`   | Ask Pi about diagnostics in the buffer or visual range.           |
-| `:PierAdd`          | Add the current snippet, note, or visual selection to next ask.   |
-| `:PierLocations`    | Open captured file references from Pi output in quickfix.         |
-| `:PierLog`          | Toggle the rendered scratch buffer.                              |
-| `:PierRawLog`       | Open `raw.jsonl` for the current repository session.              |
-| `:PierTmuxLog`      | Open a tmux split tailing `rendered.log`.                         |
-| `:PierAbort`        | Abort the active run for the current repository.                  |
+| Command              | Behavior                                                        |
+| -------------------- | --------------------------------------------------------------- |
+| `:Pier {msg}`        | Ask Pi about the current file and cursor.                       |
+| `:'<,'>Pier`         | Ask Pi about a visual line range with the selected text inlined. |
+| `:PierHunk {msg}`    | Ask Pi about the git hunk under the cursor.                     |
+| `:PierSnippet {msg}` | Ask Pi for a code snippet and preview it inline.                 |
+| `:PierSnippetAccept` | Insert the pending snippet preview.                             |
+| `:PierSnippetReject` | Clear the pending snippet preview.                              |
+| `:PierDiag {msg}`    | Ask Pi about diagnostics in the buffer or visual range.          |
+| `:PierAdd`           | Add the current snippet, note, or visual selection to next ask.  |
+| `:PierLocations`     | Open captured file references from Pi output in quickfix.        |
+| `:PierLog`           | Toggle the rendered scratch buffer.                             |
+| `:PierRawLog`        | Open `raw.jsonl` for the current repository session.             |
+| `:PierTmuxLog`       | Open a tmux split tailing `rendered.log`.                        |
+| `:PierAbort`         | Abort the active run for the current repository.                 |
 
 ## Logs
 

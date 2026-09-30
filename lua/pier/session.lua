@@ -20,6 +20,7 @@ function Session:start_rpc()
       if self.rpc and self.rpc.log then
         self.rpc.log:rendered_text(text)
       end
+      self.on_settled = nil
       self.rpc = nil
       self.busy = false
       ui.append(self, text)
@@ -54,10 +55,22 @@ function Session:on_event(event)
   if typ == "agent_settled" then
     self.busy = false
     self:add_locations(locations.from_text(self.location_text or "", self.root))
+    if self.on_settled then
+      local cb = self.on_settled
+      self.on_settled = nil
+      local ok, err = pcall(cb, self.assistant_text or "")
+      if not ok then
+        vim.notify("pier.nvim: settled callback failed: " .. tostring(err), vim.log.levels.ERROR)
+      end
+    end
   end
 
   if typ ~= "message_update" then
     self:add_locations(locations.from_event(event, self.root))
+  end
+
+  if typ == "message_update" and type(event.assistantMessageEvent) == "table" and event.assistantMessageEvent.type == "text_delta" then
+    self.assistant_text = (self.assistant_text or "") .. (event.assistantMessageEvent.delta or event.assistantMessageEvent.text_delta or "")
   end
 
   local text = render.event(event, self.render_state)
@@ -66,6 +79,7 @@ function Session:on_event(event)
     if self.rpc and self.rpc.log then
       self.rpc.log:rendered_text(text)
     end
+    self.current_text = (self.current_text or "") .. text
     self.location_text = (self.location_text or "") .. text
   end
 end
@@ -86,7 +100,8 @@ function Session:clear_pending_context()
   self.pending_context = {}
 end
 
-function Session:ask(prompt)
+function Session:ask(prompt, opts)
+  opts = opts or {}
   if self.busy then
     vim.notify("pier.nvim: pi is busy for this repo", vim.log.levels.WARN)
     return false
@@ -97,6 +112,9 @@ function Session:ask(prompt)
   self.locations = {}
   self.location_keys = {}
   self.location_text = ""
+  self.current_text = ""
+  self.assistant_text = ""
+  self.on_settled = opts.on_settled
   local shown_prompt = prompt:match("User question:\n(.*)") or prompt:gsub("\n.*", "")
   local header = "\n## Pier prompt\n\n" .. shown_prompt .. "\n\n"
   ui.open(self, { focus = false })
@@ -105,6 +123,7 @@ function Session:ask(prompt)
   local _, err = self.rpc:prompt(prompt, function(response)
     if response.error or response.success == false or response.ok == false then
       self.busy = false
+      self.on_settled = nil
       local msg = "\n[error] prompt rejected: " .. tostring(response.error or response.message or "unknown") .. "\n"
       ui.append(self, msg)
       self.rpc.log:rendered_text(msg)
@@ -119,6 +138,7 @@ function Session:ask(prompt)
 end
 
 function Session:abort()
+  self.on_settled = nil
   if not self.rpc then
     vim.notify("pier.nvim: no active pi process", vim.log.levels.INFO)
     return

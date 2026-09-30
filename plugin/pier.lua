@@ -11,6 +11,18 @@ vim.api.nvim_create_user_command("Pier", function(opts)
   pier()._command_pier(opts)
 end, { nargs = "*", range = true, desc = "Ask pi about the current file or selection" })
 
+vim.api.nvim_create_user_command("PierSnippet", function(opts)
+  pier().ask_snippet(opts.args)
+end, { nargs = "*", desc = "Ask pi for a snippet and preview it inline" })
+
+vim.api.nvim_create_user_command("PierSnippetAccept", function()
+  pier().accept_snippet()
+end, { desc = "Accept the pending pier snippet preview" })
+
+vim.api.nvim_create_user_command("PierSnippetReject", function()
+  pier().reject_snippet()
+end, { desc = "Reject the pending pier snippet preview" })
+
 vim.api.nvim_create_user_command("PierHunk", function(opts)
   pier().ask_hunk(opts.args)
 end, { nargs = "*", desc = "Ask pi about the current git hunk" })

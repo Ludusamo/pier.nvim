@@ -1,6 +1,7 @@
 local config = require("pier.config")
 local session_mod = require("pier.session")
 local context = require("pier.context")
+local snippet = require("pier.snippet")
 local tmux = require("pier.tmux")
 
 local M = {}
@@ -32,7 +33,7 @@ end
 
 local function ask_with_extra(args, extra, opts)
   opts = opts or {}
-  local user_prompt = get_prompt(args)
+  local user_prompt = opts.prompt or get_prompt(args)
   if not user_prompt or user_prompt == "" then
     return false
   end
@@ -42,7 +43,7 @@ local function ask_with_extra(args, extra, opts)
     range = opts.range,
     extra_context = build_extra(session, extra),
   })
-  local ok = session:ask(prompt)
+  local ok = session:ask(prompt, { on_settled = opts.on_settled })
   if ok then
     session:clear_pending_context()
   end
@@ -65,6 +66,36 @@ function M.ask_hunk(args)
     return false
   end
   return ask_with_extra(args, { block })
+end
+
+function M.ask_snippet(args)
+  local buf = vim.api.nvim_get_current_buf()
+  local line = vim.api.nvim_win_get_cursor(0)[1]
+  local user_prompt = get_prompt(args)
+  if not user_prompt or user_prompt == "" then
+    return false
+  end
+  local prompt = table.concat({
+    user_prompt,
+    "",
+    "Return the requested code snippet as one fenced code block.",
+    "Do not apply edits.",
+    "Do not include commentary outside the code block unless it is essential.",
+  }, "\n")
+  return ask_with_extra(nil, nil, {
+    prompt = prompt,
+    on_settled = function(text)
+      snippet.preview(buf, line, text)
+    end,
+  })
+end
+
+function M.accept_snippet()
+  return snippet.accept()
+end
+
+function M.reject_snippet()
+  return snippet.reject()
 end
 
 function M.ask_diagnostics(args, opts)
