@@ -215,6 +215,16 @@ function M.add(args, opts)
   return true
 end
 
+function M.new_session()
+  local session, err = session_mod.new(session_mod.current())
+  if not session then
+    vim.notify("pier.nvim: " .. tostring(err), vim.log.levels.WARN)
+    return false
+  end
+  vim.notify("pier.nvim: started new session " .. session.id, vim.log.levels.INFO)
+  return true
+end
+
 function M.abort()
   session_mod.current():abort()
 end

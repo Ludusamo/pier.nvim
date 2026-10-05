@@ -102,6 +102,10 @@ end
 
 function Session:ask(prompt, opts)
   opts = opts or {}
+  if self.superseded then
+    vim.notify("pier.nvim: this session was replaced by :PierNew", vim.log.levels.WARN)
+    return false
+  end
   if self.busy then
     vim.notify("pier.nvim: pi is busy for this repo", vim.log.levels.WARN)
     return false
@@ -178,10 +182,13 @@ function Session:stop()
   end
 end
 
-function M.for_path(path)
-  local info = project.info(path)
-  local session = sessions[info.root]
+local function for_info(info)
+  local session = sessions[info.id]
   if session then
+    if session.superseded then
+      -- The override was lost or is unreadable, so this id is the live scope again.
+      session.superseded = nil
+    end
     return session
   end
   session = setmetatable({
@@ -194,8 +201,36 @@ function M.for_path(path)
     locations = {},
     location_keys = {},
   }, Session)
-  sessions[info.root] = session
+  sessions[info.id] = session
   return session
+end
+
+function M.for_path(path)
+  return for_info(project.info(path))
+end
+
+-- Session for an explicit root and branch scope, independent of the current checkout.
+function M.for_scope(root, branch)
+  return for_info(project.scope_info(root, branch))
+end
+
+-- Start a fresh durable pi session for the scope (root and branch) of `old`.
+-- Old logs, buffers, and pi sessions are kept on disk.
+-- Returns the new session, or nil plus an error message.
+function M.new(old)
+  if old.busy then
+    return nil, "pi is busy for this repo, abort before starting a new session"
+  end
+  local _, err = project.new_session_override(old.root, old.info.branch)
+  if err then
+    return nil, err
+  end
+  old:stop()
+  old:clear_pending_context()
+  old.superseded = true
+  local new = M.for_scope(old.root, old.info.branch)
+  ui.replace(old, new)
+  return new
 end
 
 function M.current()
@@ -204,9 +239,14 @@ function M.current()
   if session_id then
     for _, session in pairs(sessions) do
       if session.id == session_id then
+        if session.superseded then
+          return M.for_scope(session.root, session.info.branch)
+        end
         return session
       end
     end
+    -- Unknown pier:// buffer: fall back to the working directory scope.
+    path = vim.fn.getcwd()
   end
   if path == "" then
     path = vim.fn.getcwd()

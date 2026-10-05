@@ -79,6 +79,21 @@ function M.open(session, opts)
   return buf
 end
 
+-- Show new_session's buffer in every window currently showing old_session's buffer.
+function M.replace(old_session, new_session)
+  local old = buffers[old_session.id]
+  if not valid(old) then
+    return
+  end
+  local new = M.buffer(new_session)
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.api.nvim_win_get_buf(win) == old then
+      vim.api.nvim_win_set_buf(win, new)
+      vim.api.nvim_win_set_cursor(win, { vim.api.nvim_buf_line_count(new), 0 })
+    end
+  end
+end
+
 function M.toggle(session)
   local buf = M.buffer(session)
   local closed = false

@@ -1,7 +1,7 @@
 # pier.nvim
 
 A small Neovim client for `pi --mode rpc`.
-It keeps one persisted, read-only Pi RPC process per git root, streams answers into a scratch buffer, and tees raw and rendered output into log files.
+It keeps one persisted, read-only Pi RPC process per git root and branch, streams answers into a scratch buffer, and tees raw and rendered output into log files.
 
 ## Status
 
@@ -49,6 +49,7 @@ require("pier").setup({
 | `:PierReviewBranch`  | Review the current branch diff against `main` hunk by hunk.      |
 | `:PierDiag {msg}`    | Ask Pi about diagnostics in the buffer or visual range.          |
 | `:PierAdd`           | Add the current snippet, note, or visual selection to next ask.  |
+| `:PierNew`           | Start a fresh durable Pi session for this repo and branch.       |
 | `:PierLocations`     | Open captured file references from Pi output in quickfix.        |
 | `:PierLog`           | Toggle the rendered scratch buffer.                             |
 | `:PierRawLog`        | Open `raw.jsonl` for the current repository session.             |
@@ -69,8 +70,20 @@ Logs are written under:
 Session ids use this format:
 
 ```text
+nvim-<sanitized-repo-basename>-<sanitized-branch>-<8-char-hash-of-root-and-branch>
+```
+
+Sessions are scoped by git root and branch, so switching branches switches Pi sessions.
+In detached HEAD, outside a git repository, or without git, the legacy root-only id is used:
+
+```text
 nvim-<sanitized-repo-basename>-<8-char-hash-of-root>
 ```
+
+`:PierNew` starts a fresh Pi session for the current repo and branch.
+It stores a suffix override in `~/.cache/pier.nvim/session-overrides.json`, so the new session survives restarts.
+It refuses to run while Pi is busy and drops pending `:PierAdd` context.
+Old session logs, buffers, and Pi sessions are never deleted.
 
 ## Safety
 

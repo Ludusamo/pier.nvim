@@ -59,6 +59,10 @@ vim.api.nvim_create_user_command("PierAdd", function(opts)
   pier()._command_add(opts)
 end, { nargs = "*", range = true, desc = "Add context to the next pier prompt" })
 
+vim.api.nvim_create_user_command("PierNew", function()
+  pier().new_session()
+end, { desc = "Start a fresh durable pi session for this repo and branch" })
+
 vim.api.nvim_create_user_command("PierLocations", function()
   pier().open_locations()
 end, { desc = "Open captured pier locations in quickfix" })
