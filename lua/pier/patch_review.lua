@@ -86,36 +86,6 @@ local function current_hunk()
   return active.hunks[active.index]
 end
 
-local function render()
-  ensure_window()
-  local hunk = current_hunk()
-  local lines = {}
-  if hunk then
-    table.insert(lines, string.format("Pier patch review hunk %d/%d", active.index, #active.hunks))
-    if active.title then
-      table.insert(lines, active.title)
-    end
-    table.insert(lines, "")
-    if active.mode == "review" then
-      table.insert(lines, "Press a or run :PierPatchAccept to mark this hunk reviewed.")
-      table.insert(lines, "Press r or run :PierPatchReject to skip this hunk.")
-    else
-      table.insert(lines, "Press a or run :PierPatchAccept to apply this hunk.")
-      table.insert(lines, "Press r or run :PierPatchReject to skip this hunk.")
-    end
-    table.insert(lines, "Press q or run :PierPatchClose to close the review.")
-    table.insert(lines, "")
-    vim.list_extend(lines, vim.split(hunk_patch(hunk):gsub("\n$", ""), "\n", { plain = true }))
-  else
-    table.insert(lines, "Pier patch review complete.")
-  end
-
-  vim.bo[active.buf].modifiable = true
-  vim.api.nvim_buf_set_lines(active.buf, 0, -1, false, lines)
-  vim.bo[active.buf].modifiable = false
-  vim.bo[active.buf].filetype = "diff"
-end
-
 local function map(lhs, rhs, desc)
   vim.keymap.set("n", lhs, rhs, { buffer = active.buf, nowait = true, desc = desc })
 end
@@ -130,6 +100,46 @@ local function setup_maps()
   map("q", function()
     M.close()
   end, "Close pier patch review")
+  if active.mode == "review" then
+    map("p", function()
+      M.previous()
+    end, "Previous pier patch hunk")
+  end
+end
+
+local function render()
+  ensure_window()
+  setup_maps()
+  local hunk = current_hunk()
+  local lines = {}
+  if hunk then
+    table.insert(lines, string.format("Pier patch review hunk %d/%d", active.index, #active.hunks))
+    if active.title then
+      table.insert(lines, active.title)
+    end
+    table.insert(lines, "")
+    if active.mode == "review" then
+      table.insert(lines, "Press a or run :PierPatchAccept to mark this hunk reviewed.")
+      table.insert(lines, "Press r or run :PierPatchReject to skip this hunk.")
+      table.insert(lines, "Press p or run :PierPatchPrevious to go back to the previous hunk.")
+    else
+      table.insert(lines, "Press a or run :PierPatchAccept to apply this hunk.")
+      table.insert(lines, "Press r or run :PierPatchReject to skip this hunk.")
+    end
+    table.insert(lines, "Press q or run :PierPatchClose to close the review.")
+    table.insert(lines, "")
+    vim.list_extend(lines, vim.split(hunk_patch(hunk):gsub("\n$", ""), "\n", { plain = true }))
+  else
+    table.insert(lines, "Pier patch review complete.")
+    if active.mode == "review" then
+      table.insert(lines, "Press p or run :PierPatchPrevious to go back to the previous hunk.")
+    end
+  end
+
+  vim.bo[active.buf].modifiable = true
+  vim.api.nvim_buf_set_lines(active.buf, 0, -1, false, lines)
+  vim.bo[active.buf].modifiable = false
+  vim.bo[active.buf].filetype = "diff"
 end
 
 function M.start(root, text, opts)
@@ -148,7 +158,6 @@ function M.start(root, text, opts)
     title = opts.title,
   }
   render()
-  setup_maps()
   vim.notify(string.format("pier.nvim: reviewing %d patch hunks", #hunks), vim.log.levels.INFO)
   return true
 end
@@ -191,6 +200,24 @@ function M.reject()
   if not current_hunk() then
     vim.notify("pier.nvim: patch review complete", vim.log.levels.INFO)
   end
+  return true
+end
+
+function M.previous()
+  if not active then
+    vim.notify("pier.nvim: no pending patch review", vim.log.levels.INFO)
+    return false
+  end
+  if active.mode ~= "review" then
+    vim.notify("pier.nvim: previous hunk is only available in :PierReviewBranch", vim.log.levels.INFO)
+    return false
+  end
+  if active.index <= 1 then
+    vim.notify("pier.nvim: already at the first patch hunk", vim.log.levels.INFO)
+    return false
+  end
+  active.index = active.index - 1
+  render()
   return true
 end
 

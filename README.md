@@ -44,6 +44,7 @@ require("pier").setup({
 | `:PierChange {msg}`  | Ask Pi for a unified diff, then review each hunk before apply.   |
 | `:PierPatchAccept`   | Apply the current pending patch hunk.                            |
 | `:PierPatchReject`   | Skip the current pending patch hunk.                             |
+| `:PierPatchPrevious` | Go back to the previous hunk in `:PierReviewBranch`.             |
 | `:PierPatchAsk {q}`  | Ask Pi a question about the current pending patch hunk.          |
 | `:PierPatchClose`    | Close the pending patch review.                                  |
 | `:PierReviewBranch`  | Review the current branch diff against `main` hunk by hunk.      |
@@ -96,6 +97,8 @@ pi --mode rpc --session-id <id> --tools read,grep,find,ls
 No write, edit, or bash tools are enabled for Pi by pier.nvim.
 `:PierChange` asks Pi to produce a unified diff, then pier.nvim applies only the hunks you accept with `git apply`.
 `:PierReviewBranch [base]` reviews an existing branch diff without applying anything; accepting marks a hunk reviewed and moves to the next hunk.
+In this review, press `p` or run `:PierPatchPrevious` to go back to the previous hunk, including from the completed state.
+`:PierChange` apply mode does not support going back.
 
 ## Health
 

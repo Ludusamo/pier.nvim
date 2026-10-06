@@ -130,6 +130,10 @@ function M.reject_patch_hunk()
   return patch_review.reject()
 end
 
+function M.previous_patch_hunk()
+  return patch_review.previous()
+end
+
 function M.close_patch_review()
   return patch_review.close()
 end

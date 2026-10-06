@@ -35,6 +35,10 @@ vim.api.nvim_create_user_command("PierPatchReject", function()
   pier().reject_patch_hunk()
 end, { desc = "Reject or skip the current pending pier patch hunk" })
 
+vim.api.nvim_create_user_command("PierPatchPrevious", function()
+  pier().previous_patch_hunk()
+end, { desc = "Go back to the previous hunk in :PierReviewBranch" })
+
 vim.api.nvim_create_user_command("PierPatchClose", function()
   pier().close_patch_review()
 end, { desc = "Close the pending pier patch review" })
