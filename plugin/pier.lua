@@ -35,10 +35,6 @@ vim.api.nvim_create_user_command("PierPatchReject", function()
   pier().reject_patch_hunk()
 end, { desc = "Reject or skip the current pending pier patch hunk" })
 
-vim.api.nvim_create_user_command("PierPatchPrevious", function()
-  pier().previous_patch_hunk()
-end, { desc = "Go back to the previous hunk in :PierReviewBranch" })
-
 vim.api.nvim_create_user_command("PierPatchClose", function()
   pier().close_patch_review()
 end, { desc = "Close the pending pier patch review" })
@@ -49,7 +45,7 @@ end, { nargs = "*", desc = "Ask Pi about the current pending patch hunk" })
 
 vim.api.nvim_create_user_command("PierReviewBranch", function(opts)
   pier().review_branch(opts.args)
-end, { nargs = "?", desc = "Review the current branch diff hunk by hunk" })
+end, { nargs = "?", desc = "Ask Pi for a clustered code-tour quickfix of the branch diff" })
 
 vim.api.nvim_create_user_command("PierHunk", function(opts)
   pier().ask_hunk(opts.args)

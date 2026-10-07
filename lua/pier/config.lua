@@ -9,6 +9,9 @@ M.defaults = {
     max_selection_lines = 200,
     max_selection_bytes = 20000,
   },
+  review = {
+    max_diff_bytes = 120000,
+  },
   window = {
     split = "botright",
     height = 15,

@@ -28,6 +28,7 @@ require("pier").setup({
   cmd = "pi",
   tools = { "read", "grep", "find", "ls" },
   cache_dir = vim.fn.stdpath("cache") .. "/pier.nvim",
+  review = { max_diff_bytes = 120000 },
 })
 ```
 
@@ -44,10 +45,9 @@ require("pier").setup({
 | `:PierChange {msg}`  | Ask Pi for a unified diff, then review each hunk before apply.   |
 | `:PierPatchAccept`   | Apply the current pending patch hunk.                            |
 | `:PierPatchReject`   | Skip the current pending patch hunk.                             |
-| `:PierPatchPrevious` | Go back to the previous hunk in `:PierReviewBranch`.             |
 | `:PierPatchAsk {q}`  | Ask Pi a question about the current pending patch hunk.          |
 | `:PierPatchClose`    | Close the pending patch review.                                  |
-| `:PierReviewBranch`  | Review the current branch diff against `main` hunk by hunk.      |
+| `:PierReviewBranch`  | Build a clustered code-tour quickfix list of the branch diff.    |
 | `:PierDiag {msg}`    | Ask Pi about diagnostics in the buffer or visual range.          |
 | `:PierAdd`           | Add the current snippet, note, or visual selection to next ask.  |
 | `:PierNew`           | Start a fresh durable Pi session for this repo and branch.       |
@@ -96,9 +96,17 @@ pi --mode rpc --session-id <id> --tools read,grep,find,ls
 
 No write, edit, or bash tools are enabled for Pi by pier.nvim.
 `:PierChange` asks Pi to produce a unified diff, then pier.nvim applies only the hunks you accept with `git apply`.
-`:PierReviewBranch [base]` reviews an existing branch diff without applying anything; accepting marks a hunk reviewed and moves to the next hunk.
-In this review, press `p` or run `:PierPatchPrevious` to go back to the previous hunk, including from the completed state.
-`:PierChange` apply mode does not support going back.
+`:PierReviewBranch [base]` asks Pi for a code tour of the committed diff `base...HEAD`.
+The base defaults to the first of `main`, `origin/main`, `master`, `origin/master` that exists.
+Uncommitted changes are not included.
+Pi groups related changes into clusters and picks stops inside them.
+The result opens in quickfix with one heading per cluster, the stops under it, and an "Uncovered changes" section for hunks Pi did not mention.
+Use `:cnext`, `:cprevious`, or `:cc` to walk the tour, and ask follow-ups with `:Pier` as usual.
+If Pi's reply cannot be parsed, every hunk is listed in one group instead.
+The prompt diff is cut at the last full line before `review.max_diff_bytes` (default 120000).
+Pi can only read current files and cannot run git, so it cannot see omitted hunks.
+Hunks Pi did not cover, including omitted ones, are still listed from the full local diff under "Uncovered changes".
+Deleted files are listed as text-only entries.
 
 ## Health
 

@@ -3,6 +3,7 @@ local session_mod = require("pier.session")
 local context = require("pier.context")
 local snippet = require("pier.snippet")
 local patch_review = require("pier.patch_review")
+local review_tour = require("pier.review_tour")
 local tmux = require("pier.tmux")
 
 local M = {}
@@ -130,10 +131,6 @@ function M.reject_patch_hunk()
   return patch_review.reject()
 end
 
-function M.previous_patch_hunk()
-  return patch_review.previous()
-end
-
 function M.close_patch_review()
   return patch_review.close()
 end
@@ -159,8 +156,10 @@ end
 
 function M.review_branch(args)
   local session = session_mod.current()
-  local base = args and args ~= "" and args or default_review_base(session.root)
-  local diff, err = git_output({ "git", "-C", session.root, "diff", "--no-ext-diff", "--no-color", "--unified=3", base .. "...HEAD" })
+  local root = session.root
+  local base = args and args ~= "" and args or default_review_base(root)
+  local range = base .. "...HEAD"
+  local diff, err = git_output({ "git", "-C", root, "-c", "core.quotePath=false", "diff", "--no-ext-diff", "--no-color", "--unified=3", range })
   if not diff then
     vim.notify("pier.nvim: " .. tostring(err), vim.log.levels.ERROR)
     return false
@@ -169,9 +168,22 @@ function M.review_branch(args)
     vim.notify("pier.nvim: no diff found against " .. base, vim.log.levels.INFO)
     return false
   end
-  return patch_review.start(session.root, diff, {
-    mode = "review",
-    title = "Reviewing current branch against " .. base,
+  local stat = git_output({ "git", "-C", root, "-c", "core.quotePath=false", "diff", "--no-ext-diff", "--no-color", "--stat", range }) or ""
+  local commits = git_output({ "git", "-C", root, "log", "--oneline", base .. "..HEAD" }) or ""
+
+  local prompt_diff = diff
+  local max_bytes = config.options.review.max_diff_bytes
+  if #diff > max_bytes then
+    local cut = diff:sub(1, max_bytes):match("^(.*)\n") or ""
+    prompt_diff = cut .. "\n... diff truncated; hunks beyond this point are not shown ..."
+  end
+
+  return ask_with_extra(nil, nil, {
+    session = session,
+    prompt = review_tour.prompt(base, vim.trim(stat), vim.trim(commits), prompt_diff),
+    on_settled = function(text)
+      review_tour.start(root, text, diff, { title = "Pier review tour: " .. range })
+    end,
   })
 end
 

@@ -121,7 +121,7 @@ local function render()
     if active.mode == "review" then
       table.insert(lines, "Press a or run :PierPatchAccept to mark this hunk reviewed.")
       table.insert(lines, "Press r or run :PierPatchReject to skip this hunk.")
-      table.insert(lines, "Press p or run :PierPatchPrevious to go back to the previous hunk.")
+      table.insert(lines, "Press p to go back to the previous hunk.")
     else
       table.insert(lines, "Press a or run :PierPatchAccept to apply this hunk.")
       table.insert(lines, "Press r or run :PierPatchReject to skip this hunk.")
@@ -132,7 +132,7 @@ local function render()
   else
     table.insert(lines, "Pier patch review complete.")
     if active.mode == "review" then
-      table.insert(lines, "Press p or run :PierPatchPrevious to go back to the previous hunk.")
+      table.insert(lines, "Press p to go back to the previous hunk.")
     end
   end
 
@@ -203,13 +203,15 @@ function M.reject()
   return true
 end
 
+-- Internal: "review" mode (read-only hunk walk) has no public command or caller
+-- right now; it is kept, with its tests, for non-applying hunk reviews.
 function M.previous()
   if not active then
     vim.notify("pier.nvim: no pending patch review", vim.log.levels.INFO)
     return false
   end
   if active.mode ~= "review" then
-    vim.notify("pier.nvim: previous hunk is only available in :PierReviewBranch", vim.log.levels.INFO)
+    vim.notify("pier.nvim: previous hunk is only available in review mode", vim.log.levels.INFO)
     return false
   end
   if active.index <= 1 then
